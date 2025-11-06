@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Support — SpinX Arena</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">SPINX ARENA</div>
+    <div class="top-actions">
+      <button id="sound-toggle" class="icon-btn" title="Toggle sound">🔊</button>
+      <button id="hamburger" class="icon-btn" aria-label="menu">☰</button>
+    </div>
+  </header>
+
+  <nav id="menu" class="menu hidden">
+    <a class="menu-link home-link">Home</a>
+    <a href="login.html" class="menu-link">Login</a>
+    <a href="register.html" class="menu-link">Register</a>
+    <a href="rules.html" class="menu-link">Rules</a>
+    <a href="withdraw.html" class="menu-link">Withdraw</a>
+    <a href="support.html" class="menu-link active">Support</a>
+  </nav>
+
+  <main class="container">
+    <section class="wheel-card" style="padding:18px;max-width:760px;margin:40px auto">
+      <h2>Support & Partnerships</h2>
+      <p style="color:#cde">Whether you’re a player or a partner, we’re reachable. Drop a note — we respond with business energy and human warmth.</p>
+
+      <form id="supportForm" style="display:flex;flex-direction:column;gap:10px">
+        <input id="supName" placeholder="Your name" required />
+        <input id="supEmail" placeholder="Email" required />
+        <textarea id="supMsg" placeholder="How can we help?" rows="5"></textarea>
+        <div style="display:flex;gap:10px">
+          <button class="btn" type="button" id="supSend">Send Message</button>
+          <button class="btn subtle" type="button" id="supFAQ">View FAQ</button>
+        </div>
+      </form>
+
+      <div id="supportResult" style="margin-top:12px;color:#9ff"></div>
+    </section>
+  </main>
+
+  <footer class="footer"><p>© 2025 SPINX Arena — Support</p></footer>
+
+  <script src="../nav.js"></script>
+  <script>
+    document.getElementById('supSend').addEventListener('click', ()=>{
+      const n = document.getElementById('supName').value.trim();
+      const e = document.getElementById('supEmail').value.trim();
+      const m = document.getElementById('supMsg').value.trim();
+      if(!n||!e||!m){ spinxt.toast('Please complete the form'); return; }
+      // demo: store in localStorage inbox
+      const inbox = JSON.parse(localStorage.getItem('spinx_inbox')||'[]');
+      inbox.unshift({name:n,email:e,msg:m,when:new Date().toISOString()});
+      localStorage.setItem('spinx_inbox', JSON.stringify(inbox));
+      document.getElementById('supportResult').textContent = 'Message saved — we will "reply" shortly (demo).';
+      spinxt.toast('Message received — thanks');
+      // clear
+      document.getElementById('supMsg').value = '';
+    });
+    document.getElementById('supFAQ').addEventListener('click', ()=>{
+      alert("FAQ (brief):\n\n• Wallet = local demo unless you integrate server.\n• Withdraw = simulated; integrate M-PESA server for production.\n• For production, add KYC, transaction logs, and server-side RNG.");
+    });
+  </script>
+</body>
+</html>

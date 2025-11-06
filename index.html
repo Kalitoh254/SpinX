@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SpinX Arena — Neon Wheel</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">SPINX ARENA</div>
+    <div class="top-actions">
+      <button id="sound-toggle" class="icon-btn" title="Toggle sound">🔊</button>
+      <button id="hamburger" class="icon-btn" aria-label="menu">☰</button>
+    </div>
+  </header>
+
+  <nav id="menu" class="menu hidden">
+    <a href="index.html" class="menu-link">Home</a>
+    <a href="backend/login.html" class="menu-link">Login</a>
+    <a href="backend/register.html" class="menu-link">Register</a>
+    <a href="backend/rules.html" class="menu-link">Rules</a>
+    <a href="backend/withdraw.html" class="menu-link">Withdraw</a>
+    <a href="backend/support.html" class="menu-link">Support</a>
+  </nav>
+
+  <main class="container">
+    <header class="header">
+      <h1>SpinX Arena</h1>
+      <div class="wallet">Wallet: KSh <strong id="wallet-balance">0</strong></div>
+    </header>
+
+    <section class="game-panel">
+      <div class="left-col">
+        <div class="wheel-card">
+          <div class="wheel-area">
+            <canvas id="wheel" width="420" height="420" aria-label="Reward wheel"></canvas>
+            <div id="pointer" aria-hidden="true"></div>
+            <div class="countdown">Betting window: <span id="countdown">5</span>s</div>
+          </div>
+
+          <div class="controls">
+            <input id="stake" type="number" placeholder="Stake (KSh)" min="1" />
+            <label><input id="use-free" type="checkbox" /> Use free spin</label>
+            <div class="control-row">
+              <button id="bet-btn" class="btn">Place Bet</button>
+              <button id="auto-toggle" class="btn subtle">Auto: Off</button>
+            </div>
+            <div class="info">
+              <span>Free Spins: <strong id="free-spins">0</strong></span>
+              <span>Auto: <strong id="auto-status">Off</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-card">
+          <h3>Live Winners</h3>
+          <ul id="winners-feed" class="feed-list"></ul>
+        </div>
+      </div>
+
+      <aside class="right-col">
+        <div class="stats-card">
+          <h3>Your History</h3>
+          <ul id="history" class="history-list"></ul>
+        </div>
+
+        <div class="rules-card">
+          <h3>Quick Rules</h3>
+          <ol>
+            <li>Place bet during the 5s window. Wheel spins visually while betting is open.</li>
+            <li>Only bets placed before the round end are resolved — otherwise nothing happens.</li>
+            <li>Low balance → friendlier odds. High balance → harder to win and reduced payouts.</li>
+            <li>Multipliers scale with stake (see code for tiers). Occasional losses at any stake are possible.</li>
+          </ol>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <!-- Result Modal (only shown when user betted) -->
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <h2 id="modal-title">Result</h2>
+      <p id="modal-body"></p>
+      <button id="modal-ok" class="btn">OK</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script src="nav.js"></script>
+</body>
+</html>

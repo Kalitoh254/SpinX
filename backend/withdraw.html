@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpinX | Withdraw & Deposit</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">SPINX ARENA</div>
+    <div class="top-actions">
+      <a href="../index.html" class="btn subtle">🏠 Home</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="balance-section">
+      <h2>Deposit & Withdraw</h2>
+      <div class="wallet">
+        Current Balance: KSh <strong id="balance">0</strong>
+      </div>
+    </section>
+
+    <section class="transaction-section">
+      <h3>Deposit Funds</h3>
+      <input type="number" id="depositAmount" placeholder="Enter Deposit Amount (KSh)" min="1" />
+      <button id="depositBtn" class="btn">Deposit</button>
+    </section>
+
+    <section class="transaction-section">
+      <h3>Withdraw Funds</h3>
+      <input type="number" id="withdrawAmount" placeholder="Enter Withdrawal Amount (KSh)" min="1" />
+      <button id="withdrawBtn" class="btn">Withdraw</button>
+    </section>
+
+    <section class="history-section">
+      <h3>Transaction History</h3>
+      <table id="transactionTable" class="history-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Amount (KSh)</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="transactionBody">
+          <!-- Transactions dynamically injected here -->
+        </tbody>
+      </table>
+    </section>
+
+    <div class="nav">
+      <a href="../index.html" class="btn subtle">⬅ Back to Home</a>
+    </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2025 SpinX Arena. All rights reserved.
+  </footer>
+  
+
+  <script>
+    const balanceEl = document.getElementById('balance');
+    const depositInput = document.getElementById('depositAmount');
+    const withdrawInput = document.getElementById('withdrawAmount');
+    const depositBtn = document.getElementById('depositBtn');
+    const withdrawBtn = document.getElementById('withdrawBtn');
+    const transactionBody = document.getElementById('transactionBody');
+
+    let balance = parseFloat(localStorage.getItem('spinxBalance')) || 0;
+    let transactions = JSON.parse(localStorage.getItem('spinxTransactions')) || [];
+
+    balanceEl.textContent = balance.toFixed(2);
+    renderTransactions();
+
+    // Deposit
+    depositBtn.addEventListener('click', () => {
+      const deposit = parseFloat(depositInput.value);
+      if (isNaN(deposit) || deposit <= 0) {
+        alert('Enter a valid deposit amount.');
+        return;
+      }
+
+      balance += deposit;
+      updateBalance();
+      recordTransaction('Deposit', deposit);
+      depositInput.value = '';
+      alert(`Deposit successful! Your new balance is KSh ${balance.toFixed(2)}.`);
+    });
+
+    // Withdraw
+    withdrawBtn.addEventListener('click', () => {
+      const withdraw = parseFloat(withdrawInput.value);
+      if (isNaN(withdraw) || withdraw <= 0) {
+        alert('Enter a valid withdrawal amount.');
+        return;
+      }
+
+      if (withdraw > balance) {
+        alert('Insufficient balance.');
+        return;
+      }
+
+      balance -= withdraw;
+      updateBalance();
+      recordTransaction('Withdrawal', withdraw);
+      withdrawInput.value = '';
+      alert(`Withdrawal successful! Remaining balance: KSh ${balance.toFixed(2)}.`);
+    });
+
+    // Update balance in DOM + localStorage
+    function updateBalance() {
+      localStorage.setItem('spinxBalance', balance);
+      balanceEl.textContent = balance.toFixed(2);
+    }
+
+    // Record transaction
+    function recordTransaction(type, amount) {
+      const timestamp = new Date().toLocaleString();
+      const tx = { type, amount: amount.toFixed(2), date: timestamp };
+      transactions.unshift(tx); // newest first
+      localStorage.setItem('spinxTransactions', JSON.stringify(transactions));
+      renderTransactions();
+    }
+
+    // Render transaction history
+    function renderTransactions() {
+      transactionBody.innerHTML = '';
+      if (transactions.length === 0) {
+        transactionBody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No transactions yet</td></tr>';
+        return;
+      }
+
+      transactions.forEach(tx => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${tx.type}</td>
+          <td>${tx.amount}</td>
+          <td>${tx.date}</td>
+        `;
+        transactionBody.appendChild(row);
+      });
+    }
+  </script>
+  <script>
+const form = document.getElementById('registerForm');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const username = document.getElementById('regUser').value.trim();
+  const password = document.getElementById('regPass').value.trim();
+
+  try {
+    const res = await fetch('http://localhost:3000/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      spinxt.toast('Registration successful — redirecting...');
+      // Store session info only
+      localStorage.setItem('spinx_current', JSON.stringify(data.user));
+      setTimeout(() => location.href = 'index.html', 900);
+    } else {
+      spinxt.toast(data.message, 2200);
+    }
+  } catch (err) {
+    console.error(err);
+    spinxt.toast('Server error — check backend', 2200);
+  }
+});
+</script>
+</body>
+</html>

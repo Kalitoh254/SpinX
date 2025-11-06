@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login — SpinX Arena</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">SPINX ARENA</div>
+    <div class="top-actions">
+      <button id="sound-toggle" class="icon-btn" title="Toggle sound">🔊</button>
+      <button id="hamburger" class="icon-btn" aria-label="menu">☰</button>
+    </div>
+  </header>
+
+  <nav id="menu" class="menu hidden">
+    <a class="menu-link home-link">Home</a>
+    <a href="login.html" class="menu-link active">Login</a>
+    <a href="register.html" class="menu-link">Register</a>
+    <a href="rules.html" class="menu-link">Rules</a>
+    <a href="withdraw.html" class="menu-link">Withdraw</a>
+    <a href="support.html" class="menu-link">Support</a>
+  </nav>
+
+  <main class="container">
+    <section class="wheel-card auth-card" style="max-width:520px;margin:48px auto;text-align:left">
+      <h2>Login to SpinX Arena</h2>
+      <p style="color:#cde; margin-bottom:12px">Business-grade access with gamer energy — sign in to track wallet and withdraw.</p>
+
+      <form id="loginForm" class="form-box" style="display:flex;flex-direction:column;gap:10px">
+        <input id="loginUser" placeholder="Username or email" required />
+        <input id="loginPass" placeholder="Password" type="password" required />
+        <div style="display:flex;gap:10px;align-items:center">
+          <button type="submit" class="btn">Login</button>
+          <a href="register.html" style="color:var(--neon1);align-self:center">Create account</a>
+        </div>
+      </form>
+
+      <p style="margin-top:12px;color:#aaa;font-size:13px">Demo hint: create an account first via Register — data stored locally.</p>
+    </section>
+  </main>
+
+  <footer class="footer"><p>© 2025 SPINX Arena — Play responsibly</p></footer>
+
+  <script src="../nav.js"></script>
+  <script>
+    // simple register/login using localStorage (demo-only)
+    const form = document.getElementById('loginForm');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const user = document.getElementById('loginUser').value.trim();
+      const pass = document.getElementById('loginPass').value.trim();
+      const users = JSON.parse(localStorage.getItem('spinx_users')||'[]');
+      const found = users.find(u => (u.user===user || u.email===user) && u.pass===pass);
+      if(found){
+        localStorage.setItem('spinx_current', JSON.stringify({ user: found.user, email: found.email }));
+        spinxt.toast('Login success — redirecting...');
+        setTimeout(()=> location.href = 'index.html', 900);
+      } else {
+        spinxt.toast('Invalid credentials — double-check or register', 2200);
+      }
+    });
+  </script>
+  <script>
+const form = document.getElementById('registerForm');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const username = document.getElementById('regUser').value.trim();
+  const password = document.getElementById('regPass').value.trim();
+
+  try {
+    const res = await fetch('http://localhost:3000/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      spinxt.toast('Registration successful — redirecting...');
+      // Store session info only
+      localStorage.setItem('spinx_current', JSON.stringify(data.user));
+      setTimeout(() => location.href = 'index.html', 900);
+    } else {
+      spinxt.toast(data.message, 2200);
+    }
+  } catch (err) {
+    console.error(err);
+    spinxt.toast('Server error — check backend', 2200);
+  }
+});
+</script>
+</body>
+</html>
