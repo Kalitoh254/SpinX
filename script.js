@@ -1,19 +1,19 @@
-/* script.js — triple-wheel fruit integration (completed)
+/* script.js — triple-wheel fruit integration (fixed + enhanced)
    - Triple concentric wheel drawing & animation
    - Weighted outcome selection
    - Betting, auto-play, free spins, sounds
    - Round flow: idle -> betting window -> resolve -> post-bet slow spin -> next round
    - History + winners feed
+   - Responsive canvas + footer updates
 */
 
 /***** DOM & initial wallet sync *****/
-
-
 document.addEventListener('DOMContentLoaded', () => {
   const walletBalance = document.getElementById('wallet-balance');
   let balance = parseFloat(localStorage.getItem('spinxBalance')) || 0;
   if (!walletBalance) return;
   walletBalance.textContent = balance.toFixed(2);
+
   setInterval(() => {
     let updatedBalance = parseFloat(localStorage.getItem('spinxBalance')) || 0;
     walletBalance.textContent = updatedBalance.toFixed(2);
@@ -41,12 +41,16 @@ const historyList = document.getElementById('history');
 const hamburgerBtn = document.getElementById('hamburger');
 const menu = document.getElementById('menu');
 const soundToggle = document.getElementById('sound-toggle');
+const footerBalanceEl = document.getElementById('footer-balance');
+const footerLastWinEl = document.getElementById('footer-last-win');
 
-
-
-
-canvas.width = canvas.clientWidth || 600;
-canvas.height = canvas.clientHeight || 600;
+// Responsive canvas
+function resizeCanvas(){
+  canvas.width = canvas.clientWidth || 600;
+  canvas.height = canvas.clientHeight || 600;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
 /***** Persistent state *****/
 let wallet = Number(localStorage.getItem('spinx_wallet')) || Number(localStorage.getItem('spinxBalance')) || 20000;
@@ -54,11 +58,13 @@ let freeSpins = Number(localStorage.getItem('spinx_free')) || 0;
 let history = JSON.parse(localStorage.getItem('spinx_history')) || [];
 let autoMode = localStorage.getItem('spinx_auto') === '1';
 let soundOn = localStorage.getItem('spinx_sound') === '1';
+let lastWin = 0;
 
-if (walletEl) walletEl.textContent = wallet;
+if (walletEl) walletEl.textContent = wallet.toFixed(2);
 if (freeSpinsEl) freeSpinsEl.textContent = freeSpins;
 if (autoStatusEl) autoStatusEl.textContent = autoMode ? 'On' : 'Off';
-if (soundToggle) soundToggle.textContent = soundOn ? '🔈' : '🔊';
+if (footerBalanceEl) footerBalanceEl.textContent = wallet.toFixed(2);
+if (footerLastWinEl) footerLastWinEl.textContent = lastWin;
 
 /***** Config & wheel basics *****/
 const config = {
@@ -112,7 +118,7 @@ let idleSpinInterval = null;
 let roundTimer = null;
 let roundCountdown = config.betWindow;
 
-/***** storage helpers *****/
+/***** Storage helpers *****/
 function saveState(){
   localStorage.setItem('spinx_wallet', String(wallet));
   localStorage.setItem('spinxBalance', String(wallet));
@@ -122,7 +128,7 @@ function saveState(){
   localStorage.setItem('spinx_sound', soundOn ? '1' : '0');
 }
 
-/***** sounds (tiny oscillator) *****/
+/***** Sounds (tiny oscillator) *****/
 function playSound(kind){
   if(!soundOn) return;
   try{
@@ -182,7 +188,6 @@ function drawTripleWheel(outerRot, midRot, innerRot){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // Outer shadow/background
   ctx.beginPath();
   ctx.arc(cx, cy, outerRingRadius + 10, 0, Math.PI*2);
   ctx.fillStyle = 'rgba(0,0,0,0.2)';
@@ -192,7 +197,6 @@ function drawTripleWheel(outerRot, midRot, innerRot){
   drawRing(midRingRadius, midRot, 1);
   drawRing(innerRingRadius, innerRot, 2);
 
-  // center button
   ctx.beginPath();
   ctx.arc(cx, cy, 28, 0, Math.PI*2);
   ctx.fillStyle = '#001';
@@ -200,7 +204,6 @@ function drawTripleWheel(outerRot, midRot, innerRot){
   ctx.strokeStyle = 'rgba(0,240,255,0.12)';
   ctx.stroke();
 
-  // pointer at top
   ctx.beginPath();
   ctx.moveTo(cx - 12, cy - outerRingRadius - 4);
   ctx.lineTo(cx + 12, cy - outerRingRadius - 4);
@@ -212,7 +215,6 @@ function drawTripleWheel(outerRot, midRot, innerRot){
 
 /***** Weighted pool helpers *****/
 function buildWeightedPool(){
-  // adjust weights based on houseEdge or other logic if necessary
   const pool = [];
   segments.forEach((s, idx) => {
     const weight = Math.max(0, s.baseWeight);
@@ -223,33 +225,29 @@ function buildWeightedPool(){
 const weightedPool = buildWeightedPool();
 
 function pickSegmentIndex(){
-  // return a segment index using the weighted pool
   if(weightedPool.length === 0) return Math.floor(Math.random() * segments.length);
-  const idx = weightedPool[Math.floor(Math.random() * weightedPool.length)];
-  return idx;
+  return weightedPool[Math.floor(Math.random() * weightedPool.length)];
 }
 
 /***** Compute rotation helpers *****/
-function computeRotationToAlignFruit(fruitIndex, ringRadius){
-  // we want the center of the slice to align with pointer at top (which is -90deg)
+function computeRotationToAlignFruit(fruitIndex){
   const sliceCenterDeg = sliceDeg * fruitIndex + sliceDeg/2;
-  let needed = (90 - sliceCenterDeg) % 360; // because our draw uses startOffset -90
+  let needed = (90 - sliceCenterDeg) % 360;
   if(needed < 0) needed += 360;
   return needed;
 }
 
-/***** Animation helpers: animateTripleSpinTo *****/
+/***** Animate triple spin to target fruit *****/
 function animateTripleSpinTo(targetFruitIndex, callback){
-  // We create different angular targets for outer/mid/inner so the wheels look different but central fruit aligns
-  const targetOuter = computeRotationToAlignFruit(targetFruitIndex, outerRingRadius) + 360 * (2 + Math.random()*2);
-  const targetMid = computeRotationToAlignFruit(targetFruitIndex, midRingRadius) + 360 * (3 + Math.random()*2);
-  const targetInner = computeRotationToAlignFruit(targetFruitIndex, innerRingRadius) + 360 * (4 + Math.random()*2);
+  const targetOuter = computeRotationToAlignFruit(targetFruitIndex) + 360*(2+Math.random()*2);
+  const targetMid = computeRotationToAlignFruit(targetFruitIndex) + 360*(3+Math.random()*2);
+  const targetInner = computeRotationToAlignFruit(targetFruitIndex) + 360*(4+Math.random()*2);
 
   const startOuter = rotOuter % 360;
   const startMid = rotMid % 360;
   const startInner = rotInner % 360;
 
-  const duration = 2500 + Math.floor(Math.random()*600); // ms
+  const duration = 2500 + Math.floor(Math.random()*600);
   const startTime = performance.now();
 
   playSound('spin');
@@ -257,323 +255,189 @@ function animateTripleSpinTo(targetFruitIndex, callback){
   function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
 
   function frame(now){
-    const t = Math.min(1, (now - startTime) / duration);
+    const t = Math.min(1, (now - startTime)/duration);
     const eased = easeOutCubic(t);
-    rotOuter = startOuter + (targetOuter - startOuter) * eased;
-    rotMid = startMid + (targetMid - startMid) * eased;
-    rotInner = startInner + (targetInner - startInner) * eased;
+    rotOuter = startOuter + (targetOuter - startOuter)*eased;
+    rotMid = startMid + (targetMid - startMid)*eased;
+    rotInner = startInner + (targetInner - startInner)*eased;
 
     drawTripleWheel(rotOuter % 360, rotMid % 360, rotInner % 360);
 
-    if(t < 1){
-      requestAnimationFrame(frame);
-    } else {
+    if(t < 1) requestAnimationFrame(frame);
+    else{
       playSound('win');
-      // normalize rotation angles to [0,360)
-      rotOuter = ((rotOuter % 360) + 360) % 360;
-      rotMid = ((rotMid % 360) + 360) % 360;
-      rotInner = ((rotInner % 360) + 360) % 360;
-      if (typeof callback === 'function') callback();
+      rotOuter = (rotOuter%360 + 360)%360;
+      rotMid = (rotMid%360 + 360)%360;
+      rotInner = (rotInner%360 + 360)%360;
+      if(typeof callback==='function') callback();
     }
   }
   requestAnimationFrame(frame);
 }
 
-/***** Idle spin *****/
+/***** Idle spin helpers *****/
 function startIdleSpin(){
   stopIdleSpin();
-  idleSpinInterval = setInterval(()=>{ 
-    rotOuter += config.idleSpinSpeed; 
-    rotMid -= config.idleSpinSpeed*0.6; 
-    rotInner += config.idleSpinSpeed*0.9; 
-    drawTripleWheel(rotOuter % 360, rotMid % 360, rotInner % 360); 
+  idleSpinInterval = setInterval(()=>{
+    rotOuter += config.idleSpinSpeed;
+    rotMid -= config.idleSpinSpeed*0.6;
+    rotInner += config.idleSpinSpeed*0.9;
+    drawTripleWheel(rotOuter % 360, rotMid % 360, rotInner % 360);
   }, 40);
 }
-function stopIdleSpin(){ if(idleSpinInterval){ clearInterval(idleSpinInterval); idleSpinInterval = null; } }
-
-/***** NEW: Post-bet slow spin *****/
-function startPostBetIdleSpin(){
-  stopIdleSpin();
-  let elapsed = 0;
-  const duration = 3000; // 3 seconds slow spin
-  const speedOuter = 0.3, speedMid = 0.2, speedInner = 0.25;
-
-  function frame(){
-    elapsed += 40;
-    rotOuter += speedOuter;
-    rotMid -= speedMid;
-    rotInner += speedInner;
-    drawTripleWheel(rotOuter % 360, rotMid % 360, rotInner % 360);
-    if(elapsed < duration){
-      setTimeout(frame, 40);
-    } else {
-      startRoundCountdown();
-    }
-  }
-  frame();
-}
-
-/***** Round flow *****/
+function stopIdleSpin(){ if(idleSpinInterval){ clearInterval(idleSpinInterval); idleSpinInterval=null; } }
+/***** ROUND FLOW & COUNTDOWN *****/
 function startRoundCountdown(){
-  acceptingBets = true;
   roundCountdown = config.betWindow;
+  acceptingBets = true;
   if(countdownEl) countdownEl.textContent = roundCountdown;
-  startIdleSpin();
 
   if(roundTimer) clearInterval(roundTimer);
-  if(autoMode) autoPlayIfReady();
-
   roundTimer = setInterval(()=>{
     roundCountdown--;
     if(countdownEl) countdownEl.textContent = roundCountdown;
+
     if(roundCountdown <= 0){
       clearInterval(roundTimer);
-      roundTimer = null;
-      stopIdleSpin();
       acceptingBets = false;
-      if(pendingBet){
-        resolveRoundWithBet();
-      } else {
-        decorativeSpinThenNext();
-      }
+      handleRoundResult();
     }
   }, 1000);
 }
-function decorativeSpinThenNext(){
-  const randomFruit = Math.floor(Math.random()*fruitCount);
-  animateTripleSpinTo(randomFruit, ()=>{ setTimeout(startRoundCountdown, 900); });
-}
 
-/***** Resolve round *****/
-function resolveRoundWithBet(){
-  if(!pendingBet){ setTimeout(startRoundCountdown, 500); return; }
-
-  // pick a segment from weighted segments, map to fruit index
-  const segIndex = pickSegmentIndex();
-  // Map segment index onto fruit via modulo — this preserves your original scaffold
-  const fruitIndex = segIndex % fruitCount;
-
-  animateTripleSpinTo(fruitIndex, ()=>{
-    const chosenFruit = fruits[fruitIndex];
-    const seg = segments[segIndex];
-    const pseudoChosen = { label: chosenFruit.name, value: chosenFruit.value, gift: seg.gift || null, segValue: seg.value };
-    handleRoundResultForFruit(pseudoChosen);
-    pendingBet = null;
-    // AFTER bet resolves, start slow spin BEFORE next round
-    startPostBetIdleSpin();
-  });
-}
-
-/***** handleRoundResultForFruit *****/
-function handleRoundResultForFruit(result){
-  // pendingBet structure: { stake: number, useFree: boolean }
-  const stake = pendingBet ? Number(pendingBet.stake) : 0;
-  const usedFree = pendingBet ? Boolean(pendingBet.useFree) : false;
-  let payout = 0;
-  let isWin = false;
-  let message = '';
-
-  // Determine payout logic:
-  // - If result.value > 0 it's a cash prize (we treat seg.value >0 as cash)
-  // - If gift exists, treat as win but with no cash unless seg.value >0
-  if(result.segValue && result.segValue > 0){
-    // scale payout roughly by stake (simple multiplier: seg.value / 50)
-    const multiplier = result.segValue / 50;
-    payout = Math.round(stake * multiplier);
-    isWin = payout > 0;
-    message = `You won KSh ${payout}`;
-  } else if(result.gift){
-    payout = 0;
-    isWin = true;
-    message = `You won a ${result.gift}`;
-  } else {
-    payout = 0;
-    isWin = false;
-    message = 'Try again';
-  }
-
-  // Apply free spin consumption or stake loss
-  if(usedFree){
-    // free spin used, do not deduct stake; if won, maybe add small bonus
-    if(isWin && payout > 0){
-      wallet += payout;
-    } else if(isWin && result.gift){
-      // keep as gift
-    }
-    freeSpins = Math.max(0, freeSpins - 1);
-  } else {
-    // deduct stake then add payout if any
-    wallet -= stake;
-    if(isWin && payout > 0) wallet += payout;
-  }
-
-  // if result is Free Spin gift, add
-  if(result.gift === 'Free Spin'){
-    freeSpins += 1;
-  }
-
-  // update history + winners feed
-  const entry = {
-    time: new Date().toISOString(),
-    stake, resultLabel: result.label || result.segLabel || result.segValue || result.gift,
-    isWin, payout, gift: result.gift || null
-  };
-  history.unshift(entry);
-  if(history.length > config.maxHistory) history.pop();
-
-  // winners feed (only for wins)
-  if(isWin){
-    pushWinnersFeed(`${entry.time} — ${entry.isWin ? 'WIN' : 'LOSE'} — ${entry.payout || payout} — ${entry.resultLabel || result.label}`);
-  }
-
-  // UI updates & persistence
-  updateUI();
-  saveState();
-
-  // modal display summary
-  openModal(isWin ? 'You won!' : 'Round result', `
-    <div>
-      <p>${message}</p>
-      <p>Stake: KSh ${stake}</p>
-      <p>Payout: KSh ${payout}</p>
-      ${result.gift ? `<p>Gift: ${result.gift}</p>` : ''}
-    </div>
-  `);
-}
-
-/***** Bet & Auto-play handlers *****/
+/***** BETTING HANDLER *****/
 function placeBetManual(){
-  if(!acceptingBets) { openModal('Betting Closed', '<p>Betting window closed for this round.</p>'); return false; }
-  const stake = Number(stakeInput ? stakeInput.value : 0);
-  const useFree = freeCheckbox ? freeCheckbox.checked : false;
+  if(!acceptingBets) return false;
 
-  if(useFree && freeSpins <= 0){
-    openModal('No free spins', '<p>You have no free spins available.</p>'); return false;
+  let stake = parseFloat(stakeInput.value);
+  if(isNaN(stake) || stake < config.minStake) { alert('Enter a valid stake'); return false; }
+  if(stake > wallet) { alert('Insufficient balance'); return false; }
+
+  if(freeCheckbox.checked && freeSpins > 0){
+    freeSpins--;
+    stake = 0;
+    if(freeSpinsEl) freeSpinsEl.textContent = freeSpins;
+  } else if(freeCheckbox.checked && freeSpins <= 0){
+    alert('No free spins available');
+    return false;
   }
 
-  if(!useFree){
-    if(isNaN(stake) || stake < config.minStake){
-      openModal('Invalid stake', `<p>Stake must be at least KSh ${config.minStake}.</p>`); return false;
-    }
-    if(stake > wallet){
-      openModal('Insufficient funds', '<p>Your wallet balance is too low.</p>'); return false;
-    }
-  }
+  wallet -= stake;
+  saveState();
+  if(walletEl) walletEl.textContent = wallet.toFixed(2);
+  if(footerBalanceEl) footerBalanceEl.textContent = wallet.toFixed(2);
 
-  pendingBet = { stake, useFree };
-  // show quick UI acknowledgement
-  if(betBtn) betBtn.classList.add('active');
-  setTimeout(()=> betBtn && betBtn.classList.remove('active'), 250);
-
-  // If betting when countdown is active - round will be resolved at end of countdown
+  pendingBet = stake;
   return true;
 }
 
-function autoPlayIfReady(){
-  // attempts to auto place a bet if wallet allows and stake is set
-  const stake = Number(stakeInput ? stakeInput.value : 0);
-  if((isNaN(stake) || stake < config.minStake) && freeSpins <= 0) return;
-  if(autoMode){
-    // place bet when a new round starts if not already pending
-    if(!pendingBet && acceptingBets){
-      if(freeSpins > 0){
-        pendingBet = { stake: 0, useFree: true };
-        return;
-      } else if(wallet >= stake){
-        pendingBet = { stake, useFree: false };
-        return;
-      } else {
-        // try smaller stake
-        const tryStake = Math.min(wallet, stake);
-        if(tryStake >= config.minStake){
-          pendingBet = { stake: tryStake, useFree: false };
-          return;
-        }
-      }
-    }
-  }
-}
+/***** HANDLE ROUND RESULT *****/
+function handleRoundResult(){
+  stopIdleSpin();
+  const winningIndex = pickSegmentIndex();
+  animateTripleSpinTo(winningIndex, ()=>{
+    const segment = segments[winningIndex];
+    let winAmount = segment.value;
 
-/***** UI helpers & modal *****/
-function updateUI(){
-  if(walletEl) walletEl.textContent = wallet.toFixed(2);
-  if(freeSpinsEl) freeSpinsEl.textContent = freeSpins;
-  if(autoStatusEl) autoStatusEl.textContent = autoMode ? 'On' : 'Off';
-  if(historyList){
-    historyList.innerHTML = '';
-    for(let i=0;i<Math.min(20, history.length); i++){
-      const h = history[i];
+    if(segment.gift === 'Free Spin'){
+      freeSpins++;
+      if(freeSpinsEl) freeSpinsEl.textContent = freeSpins;
+      showModal('Free Spin!', 'You won a free spin!');
+      winAmount = 0;
+    } else if(segment.gift){
+      showModal('Congratulations!', `You won a ${segment.gift}`);
+      winAmount = 0;
+    } else if(pendingBet && winAmount > 0){
+      winAmount += pendingBet;
+    }
+
+    wallet += winAmount;
+    lastWin = winAmount;
+    saveState();
+    if(walletEl) walletEl.textContent = wallet.toFixed(2);
+    if(footerBalanceEl) footerBalanceEl.textContent = wallet.toFixed(2);
+    if(footerLastWinEl) footerLastWinEl.textContent = lastWin;
+
+    if(historyList){
       const li = document.createElement('li');
-      li.textContent = `${new Date(h.time).toLocaleTimeString()} — ${h.isWin ? 'WIN' : 'LOSE'} — stake KSh ${h.stake} — payout ${h.payout || 0} ${h.gift ? `— ${h.gift}` : ''}`;
-      historyList.appendChild(li);
+      li.textContent = `Round: ${new Date().toLocaleTimeString()} — Won: ${winAmount} — ${segment.label}`;
+      historyList.prepend(li);
     }
-  }
+
+    if(winnersFeed){
+      const feedItem = document.createElement('div');
+      feedItem.className = 'feed-item';
+      feedItem.textContent = `Player won ${segment.label} (${winAmount})`;
+      winnersFeed.prepend(feedItem);
+      if(winnersFeed.childElementCount > 50) winnersFeed.removeChild(winnersFeed.lastChild);
+    }
+
+    pendingBet = null;
+
+    if(autoMode && wallet > 0){
+      setTimeout(()=>{
+        startRoundCountdown();
+        startIdleSpin();
+      }, 1500);
+    } else {
+      startIdleSpin();
+      startRoundCountdown();
+    }
+  });
 }
 
-function updateHistoryUI(){ updateUI(); }
+/***** MODAL CONTROL *****/
+function showModal(title, body){
+  if(modalTitle) modalTitle.textContent = title;
+  if(modalBody) modalBody.textContent = body;
+  if(modal) modal.style.display = 'block';
+}
+if(modalOk) modalOk.addEventListener('click', ()=>{ if(modal) modal.style.display='none'; });
 
-function pushWinnersFeed(text){
-  if(!winnersFeed) return;
-  const el = document.createElement('div');
-  el.className = 'winner';
-  el.textContent = text;
-  winnersFeed.prepend(el);
-  // keep feed length reasonable
-  while(winnersFeed.children.length > 30) winnersFeed.removeChild(winnersFeed.lastChild);
+/***** AUTO-PLAY TOGGLE *****/
+if(autoToggleBtn){
+  autoToggleBtn.addEventListener('click', ()=>{
+    autoMode = !autoMode;
+    localStorage.setItem('spinx_auto', autoMode?'1':'0');
+    if(autoStatusEl) autoStatusEl.textContent = autoMode?'On':'Off';
+    if(autoMode && acceptingBets && !idleSpinInterval){
+      startIdleSpin();
+      startRoundCountdown();
+    }
+  });
 }
 
-/***** Modal helpers *****/
-function openModal(title, bodyHtml){
-  if(!modal) return;
-  if(modalTitle) modalTitle.textContent = title || '';
-  if(modalBody) modalBody.innerHTML = bodyHtml || '';
-  modal.style.display = 'block';
+/***** HAMBURGER MENU *****/
+if(hamburgerBtn && menu){
+  hamburgerBtn.addEventListener('click', ()=>{
+    menu.classList.toggle('open');
+  });
 }
-function closeModal(){
-  if(!modal) return;
-  modal.style.display = 'none';
+
+/***** SOUND TOGGLE *****/
+if(soundToggle){
+  soundToggle.addEventListener('click', ()=>{
+    soundOn = !soundOn;
+    localStorage.setItem('spinx_sound', soundOn?'1':'0');
+    soundToggle.textContent = soundOn ? 'Sound On' : 'Sound Off';
+  });
 }
-if(modalOk) modalOk.addEventListener('click', ()=> closeModal());
-if(modal) modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(); });
 
-/***** UI event wiring *****/
-if(betBtn) betBtn.addEventListener('click', ()=> {
-  const ok = placeBetManual();
-  if(ok) {
-    // immediate feedback
-    if(!acceptingBets) openModal('Bet placed', '<p>Your bet was registered but betting is closed for this round.</p>');
-  }
-});
+/***** BET BUTTON *****/
+if(betBtn){
+  betBtn.addEventListener('click', ()=>{
+    if(!acceptingBets) return alert('Betting closed for this round.');
+    if(placeBetManual()) {
+      acceptingBets = false;
+      clearInterval(roundTimer);
+      handleRoundResult();
+    }
+  });
+}
 
-if(autoToggleBtn) autoToggleBtn.addEventListener('click', ()=>{
-  autoMode = !autoMode;
-  autoStatusEl && (autoStatusEl.textContent = autoMode ? 'On' : 'Off');
-  saveState();
-});
-
-if(soundToggle) soundToggle.addEventListener('click', ()=> {
-  soundOn = !soundOn;
-  soundToggle.textContent = soundOn ? '🔈' : '🔊';
-  saveState();
-});
-
-if(hamburgerBtn) hamburgerBtn.addEventListener('click', ()=> {
-  if(menu) menu.classList.toggle('open');
-});
-
-/***** Initial draw + start rounds *****/
-drawTripleWheel(rotOuter, rotMid, rotInner);
-updateUI();
+/***** INITIALIZATION *****/
+startIdleSpin();
 startRoundCountdown();
 
-/***** Safety: cleanup on page hide/unload *****/
-window.addEventListener('beforeunload', ()=> {
-  stopIdleSpin();
-  if(roundTimer) clearInterval(roundTimer);
-  saveState();
-});
-
-// Expose for debugging in console
-window.SpinX = {
-  placeBetManual, startRoundCountdown, animateTripleSpinTo, getState: ()=>({ wallet, freeSpins, history, autoMode })
-};
+/***** QUICK DEBUG *****/
+// window.wallet = wallet; window.freeSpins = freeSpins; window.rotOuter = rotOuter;

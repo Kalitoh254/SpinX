@@ -7,6 +7,94 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- Splash Screen -->
+<div id="splash-screen">
+  <div class="splash-content">
+    <img src="icon.png" alt="SpinX Arena" class="splash-logo" />
+    <div class="loading-bar">
+      <div class="loading-progress"></div>
+    </div>
+    <p class="loading-text">Loading Arena...</p>
+  </div>
+</div>
+
+<style>
+  /* Fullscreen splash container */
+  #splash-screen {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center, #000814 40%, #000 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeOut 1s ease-in-out 3.5s forwards;
+  }
+
+  .splash-content {
+    text-align: center;
+    color: #00ffff;
+    font-family: 'Orbitron', sans-serif;
+  }
+
+  .splash-logo {
+    width: 140px;
+    filter: drop-shadow(0 0 12px #00ffff);
+    animation: logoPulse 2s ease-in-out infinite;
+  }
+
+  .loading-bar {
+    width: 180px;
+    height: 6px;
+    background: #111;
+    border-radius: 3px;
+    margin: 20px auto 10px;
+    overflow: hidden;
+  }
+
+  .loading-progress {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #00ffff, #00aaff);
+    border-radius: 3px;
+    animation: loadingMove 3.5s ease-in-out forwards;
+  }
+
+  .loading-text {
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: #00ffff;
+    animation: textFade 1.2s ease-in-out infinite alternate;
+  }
+
+  @keyframes logoPulse {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px #00ffff); }
+    50% { transform: scale(1.1); filter: drop-shadow(0 0 20px #00ffff); }
+  }
+
+  @keyframes loadingMove {
+    from { width: 0%; }
+    to { width: 100%; }
+  }
+
+  @keyframes textFade {
+    from { opacity: 0.6; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeOut {
+    to { opacity: 0; visibility: hidden; }
+  }
+</style>
+
+<script>
+  // Remove splash screen after animation ends
+  window.addEventListener("load", () => {
+    setTimeout(() => {
+      document.getElementById("splash-screen").style.display = "none";
+    }, 4000);
+  });
+</script>
   <header class="topbar">
     <div class="brand">SPINX ARENA</div>
     <div class="top-actions">
@@ -86,6 +174,65 @@
       <button id="modal-ok" class="btn">OK</button>
     </div>
   </div>
+  <!-- Footer -->
+<footer id="game-footer">
+  <div class="footer-content">
+    <div class="footer-left">
+      <p>© 2025 SpinX Arena | All Rights Reserved</p>
+      <p>⚠️ Gamble Responsibly. Must be 18+</p>
+    </div>
+    <div class="footer-center">
+      <a href="index.html">Home</a>
+      <a href="backend/rules.html">Game Rules</a>
+      <a href="#leaderboard">Leaderboard</a>
+      <a href="backend/withdraw.html">Wallet</a>
+      <a href="backend/support.html">Contact</a>
+    </div>
+    <div class="footer-right">
+      <p>Balance: <span id="footer-balance">₵0.00</span></p>
+      <p>Last Win: <span id="footer-last-win">₵0.00</span></p>
+    </div>
+  </div>
+</footer>
+
+<style>
+#game-footer {
+  width: 100%;
+  background: #0a0a0a;
+  color: #00ffff;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  border-top: 2px solid #00ffff;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.footer-content {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.footer-left, .footer-center, .footer-right {
+  margin: 5px 0;
+}
+
+.footer-center a {
+  margin: 0 8px;
+  text-decoration: none;
+  color: #00ffff;
+  transition: color 0.3s;
+}
+
+.footer-center a:hover {
+  color: #00aaff;
+}
+</style>
+  
 
   <script src="script.js"></script>
   <script src="nav.js"></script>
